@@ -1,0 +1,132 @@
+const express = require("express");
+const app = express();
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient;
+const validator = require('validator');
+const bcrypt = require('bcryptjs');
+
+app.use(express.json());
+
+app.get("/", (req, res) => {
+    res.send("Hola mundo")
+});
+
+//Mostrar usuarios
+app.get("/usuarios", async(req, res) =>{
+    const usuarios = await prisma.user.findMany();
+    res.json(usuarios); 
+})
+
+//Crear un usuario
+app.post("/registrarUsuario", async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+        // Validar que vengan todos los datos
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: "Error. Ingresa todos los datos necesarios." });
+        }
+
+        // Verificar que el correo no esté ya registrado
+        const usuarioExiste = await prisma.user.findUnique({
+            where: { email },
+        });
+        if (usuarioExiste) {
+            return res.status(400).json({ message: "Error. Este correo ya está registrado." });
+        }
+
+        // Validar la contraseña
+        if (!validator.isStrongPassword(password, {
+            minLength: 8,
+            minLowercase: 1,
+            minUppercase: 1,
+            minNumbers: 1,
+            minSymbols: 1,
+        })) {
+            return res.status(400).json({
+                message: "La contraseña debe tener mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial."
+            });
+        }
+
+        // Encriptar la contraseña
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Crear el nuevo usuario en la base de datos
+        const newUser = await prisma.user.create({
+            data: {
+                name,
+                email,
+                password: hashedPassword,
+            },
+        });
+
+        //No enviar contraseña en la respuesta
+        const { password: _, ...userWithoutPassword } = newUser;
+
+        res.status(201).json({
+            message: "Usuario registrado correctamente.",
+            user: userWithoutPassword,
+        });
+
+    } catch (error) {
+        console.error("Error registrando usuario:", error);
+        res.status(500).json({ message: "Error interno del servidor." });
+    }
+});
+
+//Actualizar usuario
+app.put("/actualizarUsuario/:id", async (req, res) => {
+    const { id } = req.params;
+    const { name, email, password } = req.body;
+
+    // Validar que al menos uno de los campos esté presente para actualizar
+    if (!name && !email && !password) {
+        return res.status(400).json({ message: "Error. Se debe enviar al menos un dato para actualizar." });
+    }
+
+    try {
+        const usuarioExistente = await prisma.user.findUnique({
+            where: { id: Number(id) },
+        });
+        if (!usuarioExistente) {
+            return res.status(404).json({ message: "Error. Usuario no encontrado." });
+        }
+
+        // Crear un objeto con los campos que se desean actualizar
+        const updatedData = {};
+        if (name) updatedData.name = name;
+        if (email) updatedData.email = email;
+        if (password) {
+            updatedData.password = await bcrypt.hash(password, 10);
+        }
+
+        // Actualizar el usuario en la base de datos
+        const updatedUser = await prisma.user.update({
+            where: { id: Number(id) },
+            data: updatedData,
+        });
+
+        const { password: _, ...userWithoutPassword } = updatedUser;
+
+        res.status(200).json({
+            message: "Usuario actualizado correctamente.",
+            user: userWithoutPassword,
+        });
+    } catch (error) {
+        console.error("Error actualizando usuario:", error);
+        res.status(500).json({ message: "Error interno del servidor." });
+    }
+});
+
+//Eliminar usuario
+app.delete("/eliminarUsuario/:id", async(req, res) =>{
+    const {id} = req.params;
+    const eliminar = await prisma.user.delete({
+        where: {id: Number(id)}
+    });
+
+    res.json("Usuario eliminado");
+})
+
+app.listen(3000, () => {
+    console.log("Servidor corriendo en localhost puerto 3000")
+});
