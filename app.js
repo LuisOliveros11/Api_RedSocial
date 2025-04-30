@@ -1,20 +1,20 @@
+require('dotenv').config();
 const express = require("express");
 const app = express();
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient;
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 app.use(express.json());
 
-app.get("/", (req, res) => {
-    res.send("Hola mundo")
-});
+//ENDPOINTS PARA USUARIOS
 
 //Mostrar usuarios
-app.get("/usuarios", async(req, res) =>{
+app.get("/usuarios", async (req, res) => {
     const usuarios = await prisma.user.findMany();
-    res.json(usuarios); 
+    res.json(usuarios);
 })
 
 //Crear un usuario
@@ -118,14 +118,54 @@ app.put("/actualizarUsuario/:id", async (req, res) => {
 });
 
 //Eliminar usuario
-app.delete("/eliminarUsuario/:id", async(req, res) =>{
-    const {id} = req.params;
+app.delete("/eliminarUsuario/:id", async (req, res) => {
+    const { id } = req.params;
     const eliminar = await prisma.user.delete({
-        where: {id: Number(id)}
+        where: { id: Number(id) }
     });
 
     res.json("Usuario eliminado");
 })
+
+//Iniciar sesion usuario
+app.post("/iniciarSesion", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        //Validar que se haya enviado email y password
+        if (!email || !password) {
+            return res.status(400).json({ message: "Error. Debes enviar correo y contraseña." });
+        }
+
+        //Buscar al usuario por email
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            return res.status(401).json({ message: "Error. Usuario o contraseña incorrectos." });
+        }
+
+        //Verificar que la contraseña encriptada coincida
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        if (!passwordMatch) {
+            return res.status(401).json({ message: "Error. Usuario o contraseña incorrectos." });
+        }
+
+        const payload = {
+            id: user.id,
+            email: user.email
+        };
+
+        // Generar el token usando la variable secreto
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' }); 
+
+        res.status(200).json({
+            message: "Inicio de sesión exitoso.",
+            token,
+        });
+    } catch (error) {
+        console.error("Error en el login:", error);
+        res.status(500).json({ message: "Error interno del servidor." });
+    }
+});
 
 app.listen(3000, () => {
     console.log("Servidor corriendo en localhost puerto 3000")
