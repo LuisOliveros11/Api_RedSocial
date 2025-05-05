@@ -16,6 +16,29 @@ app.get("/usuarios", async (req, res) => {
     const usuarios = await prisma.user.findMany();
     res.json(usuarios);
 })
+app.get("/usuario/:id", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const usuario = await prisma.user.findUnique({
+            where: { id: Number(id) },
+        });
+
+        if (!usuario) {
+            return res.status(404).json({ message: "Usuario no encontrado." });
+        }
+
+        // No enviar la contraseña
+        const { password, ...userWithoutPassword } = usuario;
+
+        res.json(userWithoutPassword);
+    } catch (error) {
+        console.error("Error al obtener el usuario:", error);
+        res.status(500).json({ message: "Error interno del servidor." });
+    }
+});
+
+
 
 //Crear un usuario
 app.post("/registrarUsuario", async (req, res) => {
@@ -151,7 +174,9 @@ app.post("/iniciarSesion", async (req, res) => {
 
         const payload = {
             id: user.id,
-            email: user.email
+            email: user.email,
+            name: user.name,
+            // incluir atributo: Foto de perfil
         };
 
         // Generar el token usando la variable secreto
