@@ -7,8 +7,22 @@ const validator = require('validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-app.use(express.json());
+const multer = require('multer');
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Configurar almacenamiento de archivos
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + '-' + file.originalname);
+    },
+});
+
+const upload = multer({ storage: storage });
 //ENDPOINTS PARA USUARIOS
 
 //Mostrar usuarios
@@ -41,10 +55,12 @@ app.get("/usuario/:id", async (req, res) => {
 
 
 //Crear un usuario
-app.post("/registrarUsuario", async (req, res) => {
+app.post('/registrarUsuario', upload.single('photo'), async (req, res) => {
+    const { name, email, password } = req.body;
+    const photo = req.file ? req.file.path : null;
+
     try {
-        const { name, email, password } = req.body;
-        // Validar que vengan todos los datos
+        // Validar los datos
         if (!name || !email || !password) {
             return res.status(400).json({ message: "Error. Ingresa todos los datos necesarios." });
         }
@@ -56,6 +72,7 @@ app.post("/registrarUsuario", async (req, res) => {
         if (usuarioExiste) {
             return res.status(400).json({ message: "Error. Este correo ya está registrado." });
         }
+
 
         // Validar la contraseña
         if (!validator.isStrongPassword(password, {
@@ -72,27 +89,25 @@ app.post("/registrarUsuario", async (req, res) => {
 
         // Encriptar la contraseña
         const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Crear el nuevo usuario en la base de datos
+        // Crear el usuario en la base de datos
         const newUser = await prisma.user.create({
             data: {
                 name,
                 email,
                 password: hashedPassword,
+                photo,
             },
-        });
-
-        //No enviar contraseña en la respuesta
+        });        
         const { password: _, ...userWithoutPassword } = newUser;
+
 
         res.status(201).json({
             message: "Usuario registrado correctamente.",
             user: userWithoutPassword,
         });
-
     } catch (error) {
-        console.error("Error registrando usuario:", error);
-        res.status(500).json({ message: "Error interno del servidor." });
+        console.error('Error al registrar usuario:', error);
+        res.status(500).json({ message: 'Error en el servidor' });
     }
 });
 
@@ -180,7 +195,7 @@ app.post("/iniciarSesion", async (req, res) => {
         };
 
         // Generar el token usando la variable secreto
-        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' }); 
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         res.status(200).json({
             message: "Inicio de sesión exitoso.",
