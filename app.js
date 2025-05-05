@@ -9,13 +9,18 @@ const jwt = require('jsonwebtoken');
 
 const multer = require('multer');
 
+const baseUrl = process.env.BASE_URL;
+
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use('/uploads', express.static('uploads'));
 
 // Configurar almacenamiento de archivos
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        cb(null, './uploads/');
     },
     filename: (req, file, cb) => {
         cb(null, Date.now() + '-' + file.originalname);
@@ -57,7 +62,7 @@ app.get("/usuario/:id", async (req, res) => {
 //Crear un usuario
 app.post('/registrarUsuario', upload.single('photo'), async (req, res) => {
     const { name, email, password } = req.body;
-    const photo = req.file ? req.file.path : null;
+    const photo = req.file ? req.file.path : 'uploads/default_user_img/default_img.jpg';
 
     try {
         // Validar los datos
@@ -191,6 +196,7 @@ app.post("/iniciarSesion", async (req, res) => {
             id: user.id,
             email: user.email,
             name: user.name,
+            photo: user.photo ? `${baseUrl}/${user.photo}` : null,
             // incluir atributo: Foto de perfil
         };
 
