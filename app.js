@@ -11,7 +11,6 @@ const multer = require('multer');
 
 const baseUrl = process.env.BASE_URL;
 
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -137,7 +136,24 @@ app.put("/actualizarUsuario/:id", async (req, res) => {
         // Crear un objeto con los campos que se desean actualizar
         const updatedData = {};
         if (name) updatedData.name = name;
-        if (email) updatedData.email = email;
+        if (email) {
+            if (!validator.isEmail(email)) {
+                return res.status(400).json({ message: "Error. El correo no tiene un formato válido." });
+            }
+
+            const emailInUse = await prisma.user.findFirst({
+                where: {
+                    email,
+                    NOT: { id: Number(id) },
+                },
+            });
+
+            if (emailInUse) {
+                return res.status(400).json({ message: "Error. Este correo ya está registrado por otro usuario." });
+            }
+
+            updatedData.email = email;
+        }
         if (password) {
             updatedData.password = await bcrypt.hash(password, 10);
         }
