@@ -116,12 +116,13 @@ app.post('/registrarUsuario', upload.single('photo'), async (req, res) => {
 });
 
 //Actualizar usuario
-app.put("/actualizarUsuario/:id", async (req, res) => {
+app.put("/actualizarUsuario/:id", upload.single('photo'), async (req, res) => {
     const { id } = req.params;
     const { name, email, password } = req.body;
+    const photo = req.file ? req.file.path : null;
 
     // Validar que al menos uno de los campos esté presente para actualizar
-    if (!name && !email && !password) {
+    if (!name && !email && !password && !photo) {
         return res.status(400).json({ message: "Error. Se debe enviar al menos un dato para actualizar." });
     }
 
@@ -157,6 +158,9 @@ app.put("/actualizarUsuario/:id", async (req, res) => {
         if (password) {
             updatedData.password = await bcrypt.hash(password, 10);
         }
+
+       
+        if (photo) updatedData.photo = baseUrl + "/" + photo;
 
         // Actualizar el usuario en la base de datos
         const updatedUser = await prisma.user.update({
@@ -212,9 +216,10 @@ app.post("/iniciarSesion", async (req, res) => {
             id: user.id,
             email: user.email,
             name: user.name,
-            photo: user.photo ? `${baseUrl}/${user.photo}` : null,
-            // incluir atributo: Foto de perfil
-        };
+            photo: user.photo === 'uploads/default_user_img/default_img.jpg'
+                ? `${baseUrl}/${user.photo}`
+                : user.photo,
+            };
 
         // Generar el token usando la variable secreto
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
