@@ -6,10 +6,9 @@ const prisma = new PrismaClient;
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
 const multer = require('multer');
-
 const baseUrl = process.env.BASE_URL;
+const { authenticateToken } = require('./authMiddleware');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -55,8 +54,6 @@ app.get("/usuario/:id", async (req, res) => {
         res.status(500).json({ message: "Error interno del servidor." });
     }
 });
-
-
 
 //Crear un usuario
 app.post('/registrarUsuario', upload.single('photo'), async (req, res) => {
@@ -116,7 +113,7 @@ app.post('/registrarUsuario', upload.single('photo'), async (req, res) => {
 });
 
 //Actualizar usuario
-app.put("/actualizarUsuario/:id", upload.single('photo'), async (req, res) => {
+app.put("/actualizarUsuario/:id", authenticateToken, upload.single('photo'), async (req, res) => {
     const { id } = req.params;
     const { name, email, password } = req.body;
     const photo = req.file ? req.file.path : null;
