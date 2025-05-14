@@ -19,5 +19,19 @@ model User {
   email    String   @unique
   password String
   photo    String? 
-  // posts    Post[]
+  posts    Post[]
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  image     String?  
+  content   String?  
+  latitude  Float?   
+  longitude Float?   
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // Relación con User
+  userId Int
+  user   User     @relation(fields: [userId], references: [id])
+  likes   Int      @default(0)
 }

@@ -26,7 +26,8 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
-//ENDPOINTS PARA USUARIOS
+
+// * * *  ENDPOINTS PARA USUARIOS * * * 
 
 //Mostrar usuarios
 app.get("/usuarios", async (req, res) => {
@@ -98,7 +99,7 @@ app.post('/registrarUsuario', upload.single('photo'), async (req, res) => {
                 password: hashedPassword,
                 photo,
             },
-        });        
+        });
         const { password: _, ...userWithoutPassword } = newUser;
 
 
@@ -156,7 +157,7 @@ app.put("/actualizarUsuario/:id", authenticateToken, upload.single('photo'), asy
             updatedData.password = await bcrypt.hash(password, 10);
         }
 
-       
+
         if (photo) updatedData.photo = baseUrl + "/" + photo;
 
         // Actualizar el usuario en la base de datos
@@ -216,7 +217,7 @@ app.post("/iniciarSesion", async (req, res) => {
             photo: user.photo === 'uploads/default_user_img/default_img.jpg'
                 ? `${baseUrl}/${user.photo}`
                 : user.photo,
-            };
+        };
 
         // Generar el token usando la variable secreto
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -230,6 +231,55 @@ app.post("/iniciarSesion", async (req, res) => {
         res.status(500).json({ message: "Error interno del servidor." });
     }
 });
+
+// * * *  ENDPOINTS PARA POSTS * * * 
+
+//Mostrar posts
+app.get("/posts", async (req, res) => {
+    const posts = await prisma.post.findMany();
+    res.json(posts);
+})
+
+//CREAR POST
+app.post("/crearPost", authenticateToken, upload.single('image'), async (req, res) => {
+    try {
+        const { content, latitude, longitude } = req.body;
+        const userId = req.user.id;       
+        const filePath = req.file?.path;      
+
+        if (!filePath && !content) {
+            return res.status(400).json({ message: "Error. Publicacion vacia." });
+        }
+
+        const imageUrl = filePath ? `${baseUrl}/${filePath}` : null;
+
+        const nuevoPost = await prisma.post.create({
+            data: {
+                image: imageUrl,
+                content,
+                latitude: latitude ? parseFloat(latitude) : null,
+                longitude: longitude ? parseFloat(longitude) : null,
+                user: { connect: { id: userId } }, // relación con modelo User
+            },
+        });
+
+        res.status(201).json(nuevoPost);
+    } catch (err) {
+        console.error("Error creando Post:", err);
+        res.status(500).json({ message: "Error interno al crear la publicación." });
+    }
+}
+);
+
+//Eliminar post
+app.delete("/eliminarPost/:id", async (req, res) => {
+    const { id } = req.params;
+    const eliminar = await prisma.post.delete({
+        where: { id: Number(id) }
+    });
+
+    res.json("Post eliminado");
+})
 
 app.listen(3000, () => {
     console.log("Servidor corriendo en localhost puerto 3000")
