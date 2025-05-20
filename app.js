@@ -243,7 +243,7 @@ app.get("/posts", async (req, res) => {
 //CREAR POST
 app.post("/crearPost", authenticateToken, upload.single('image'), async (req, res) => {
     try {
-        const { content, latitude, longitude } = req.body;
+        const { content, city, country } = req.body;
         const userId = req.user.id;       
         const filePath = req.file?.path;      
 
@@ -257,13 +257,14 @@ app.post("/crearPost", authenticateToken, upload.single('image'), async (req, re
             data: {
                 image: imageUrl,
                 content,
-                latitude: latitude ? parseFloat(latitude) : null,
-                longitude: longitude ? parseFloat(longitude) : null,
+                city,
+                country,
                 user: { connect: { id: userId } }, // relación con modelo User
             },
         });
 
         res.status(201).json(nuevoPost);
+        console.log("PUBLICACION CREADA")
     } catch (err) {
         console.error("Error creando Post:", err);
         res.status(500).json({ message: "Error interno al crear la publicación." });

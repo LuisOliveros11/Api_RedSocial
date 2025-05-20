@@ -26,8 +26,8 @@ model Post {
   id        Int      @id @default(autoincrement())
   image     String?  
   content   String?  
-  latitude  Float?   
-  longitude Float?   
+  city  String?   
+  country String?   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   // Relación con User
