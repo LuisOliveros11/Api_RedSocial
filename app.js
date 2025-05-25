@@ -235,15 +235,27 @@ app.post("/iniciarSesion", async (req, res) => {
 // * * *  ENDPOINTS PARA POSTS * * * 
 
 //Mostrar posts
-app.get("/posts", async (req, res) => {
+app.get("/feed/:id", authenticateToken, async (req, res) => {
+  const currentUserId = Number(req.params.id);  
+
+  try {
     const posts = await prisma.post.findMany({
-        include: {
-            user: true
-        },
+      where: {
+        userId: {              
+          not: currentUserId
+        }
+      },
+      include: {
+        user: true
+      },
     });
-    
+
     res.json(posts);
-})
+  } catch (error) {
+    console.error("Error al obtener posts:", error);
+    res.status(500).json({ message: "Error interno del servidor." });
+  }
+});
 
 //Mostrar posts guardados
 app.get('/postsGuardados/:id', authenticateToken, async (req, res) => {
