@@ -246,7 +246,8 @@ app.get("/feed/:id", authenticateToken, async (req, res) => {
         }
       },
       include: {
-        user: true
+        user: true,
+        savedByUsers: true
       },
     });
 
