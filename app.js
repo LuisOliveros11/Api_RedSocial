@@ -240,12 +240,36 @@ app.get("/posts", async (req, res) => {
     res.json(posts);
 })
 
+//Mostrar posts guardados
+app.get('/postsGuardados/:id', authenticateToken, async (req, res) => {
+    const userId = parseInt(req.params.id);
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                savedPosts: {
+                    include: {
+                        user: true
+                    }
+                }
+            }
+        });
+
+        if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+        res.json(user.savedPosts);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener posts guardados' });
+    }
+});
+
 //CREAR POST
 app.post("/crearPost", authenticateToken, upload.single('image'), async (req, res) => {
     try {
         const { content, city, country } = req.body;
-        const userId = req.user.id;       
-        const filePath = req.file?.path;      
+        const userId = req.user.id;
+        const filePath = req.file?.path;
 
         if (!filePath && !content) {
             return res.status(400).json({ message: "Error. Publicacion vacia." });
@@ -271,6 +295,27 @@ app.post("/crearPost", authenticateToken, upload.single('image'), async (req, re
     }
 }
 );
+
+// Guardar post para un usuario
+app.post('/guardarPost', authenticateToken, async (req, res) => {
+    const { userId, postId } = req.body;
+
+    try {
+        const user = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                savedPosts: {
+                    connect: { id: postId }
+                }
+            },
+        });
+
+        res.json({ message: 'Post guardado con éxito', user });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al guardar el post' });
+    }
+});
 
 //Eliminar post
 app.delete("/eliminarPost/:id", async (req, res) => {
