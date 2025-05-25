@@ -236,7 +236,12 @@ app.post("/iniciarSesion", async (req, res) => {
 
 //Mostrar posts
 app.get("/posts", async (req, res) => {
-    const posts = await prisma.post.findMany();
+    const posts = await prisma.post.findMany({
+        include: {
+            user: true
+        },
+    });
+    
     res.json(posts);
 })
 
