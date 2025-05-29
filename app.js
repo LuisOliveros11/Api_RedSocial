@@ -236,22 +236,22 @@ app.post("/iniciarSesion", async (req, res) => {
 
 //Mostrar posts
 app.get("/feed/:id", authenticateToken, async (req, res) => {
-  const currentUserId = Number(req.params.id);  
+    const currentUserId = Number(req.params.id);
 
-  try {
-    const posts = await prisma.post.findMany({
-     
-      include: {
-        user: true,
-        savedByUsers: true
-      },
-    });
+    try {
+        const posts = await prisma.post.findMany({
 
-    res.json(posts);
-  } catch (error) {
-    console.error("Error al obtener posts:", error);
-    res.status(500).json({ message: "Error interno del servidor." });
-  }
+            include: {
+                user: true,
+                savedByUsers: true
+            },
+        });
+
+        res.json(posts);
+    } catch (error) {
+        console.error("Error al obtener posts:", error);
+        res.status(500).json({ message: "Error interno del servidor." });
+    }
 });
 
 //Mostrar posts guardados
@@ -330,6 +330,30 @@ app.post('/guardarPost', authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'Error al guardar el post' });
     }
 });
+
+// Des-Guardar post para un usuario
+app.delete('/eliminarPostGuardado/:postId', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;                      
+        const postId = Number(req.params.postId);
+
+        // Usamos disconnect para quitar la relación muchos-a-muchos
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                savedPosts: {
+                    disconnect: { id: postId }
+                }
+            }
+        });
+
+        res.json({ message: 'Post desguardado exitosamente' });
+    } catch (error) {
+        console.error('Error al desguardar el post:', error);
+        res.status(500).json({ error: 'Error al desguardar el post' });
+    }
+}
+);
 
 //Eliminar post
 app.delete("/eliminarPost/:id", async (req, res) => {
