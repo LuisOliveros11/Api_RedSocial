@@ -240,11 +240,7 @@ app.get("/feed/:id", authenticateToken, async (req, res) => {
 
   try {
     const posts = await prisma.post.findMany({
-      where: {
-        userId: {              
-          not: currentUserId
-        }
-      },
+     
       include: {
         user: true,
         savedByUsers: true
