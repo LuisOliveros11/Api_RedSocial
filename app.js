@@ -240,7 +240,7 @@ app.get("/feed/:id", authenticateToken, async (req, res) => {
 
     try {
         const posts = await prisma.post.findMany({
-
+            orderBy: { createdAt: "desc" },
             include: {
                 user: true,
                 savedByUsers: true
@@ -263,6 +263,7 @@ app.get('/postsGuardados/:id', authenticateToken, async (req, res) => {
             where: { id: userId },
             include: {
                 savedPosts: {
+                    orderBy: { createdAt: "desc" },  
                     include: {
                         user: true
                     }
@@ -334,7 +335,7 @@ app.post('/guardarPost', authenticateToken, async (req, res) => {
 // Des-Guardar post para un usuario
 app.delete('/eliminarPostGuardado/:postId', authenticateToken, async (req, res) => {
     try {
-        const userId = req.user.id;                      
+        const userId = req.user.id;
         const postId = Number(req.params.postId);
 
         // Usamos disconnect para quitar la relación muchos-a-muchos
