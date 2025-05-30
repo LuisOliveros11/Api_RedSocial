@@ -21,6 +21,7 @@ model User {
   photo    String? 
   posts    Post[]
   savedPosts Post[]   @relation("SavedPosts")
+  likedPosts  Post[]  @relation("Likes") 
 }
 
 model Post {
@@ -36,4 +37,5 @@ model Post {
   user   User     @relation(fields: [userId], references: [id])
   likes   Int      @default(0)
   savedByUsers User[]   @relation("SavedPosts") 
+  likedByUsers  User[]   @relation("Likes")
 }

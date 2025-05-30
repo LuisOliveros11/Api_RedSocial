@@ -263,7 +263,7 @@ app.get('/postsGuardados/:id', authenticateToken, async (req, res) => {
             where: { id: userId },
             include: {
                 savedPosts: {
-                    orderBy: { createdAt: "desc" },  
+                    orderBy: { createdAt: "desc" },
                     include: {
                         user: true
                     }
@@ -333,7 +333,7 @@ app.post('/guardarPost', authenticateToken, async (req, res) => {
 });
 
 // Des-Guardar post para un usuario
-app.delete('/eliminarPostGuardado/:postId', authenticateToken, async (req, res) => {
+app.delete('/eliminarPostGuardado/:id', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
         const postId = Number(req.params.postId);
@@ -365,6 +365,96 @@ app.delete("/eliminarPost/:id", async (req, res) => {
 
     res.json("Post eliminado");
 })
+
+//Obtener numero de likes de un post
+app.get('/likes/:id', authenticateToken, async (req, res) => {
+    const postId = Number(req.params.id);
+    try {
+        const post = await prisma.post.findUnique({
+            where: { id: postId },
+            select: { likes: true }
+        });
+        if (!post) return res.status(404).json({ error: 'Post no encontrado' });
+
+        return res.json({ likeCount: post.likes });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Error al obtener recuento de likes' });
+    }
+});
+
+
+//Dar like a Post
+app.post('/postLike/:id', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const postId = Number(req.params.id);
+
+    try {
+        //Verifica si el usuario ya dio like a el post
+        const likeExiste = await prisma.user.findFirst({
+            where: {
+                id: userId,
+                likedPosts: {
+                    some: { id: postId }
+                }
+            }
+        });
+
+        if (likeExiste) {
+            return res.status(400).json({ error: 'Ya has dado like a este post' });
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                likedPosts: { connect: { id: postId } }
+            }
+        });
+
+        await prisma.post.update({
+            where: { id: postId },
+            data: { likes: { increment: 1 } }
+        });
+
+        res.json({ message: 'Post marcado con like.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'No se pudo dar like.' });
+    }
+});
+
+//Quitar like a post
+app.delete('/quitarLike/:id', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const postId = Number(req.params.id);
+
+    try {
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                likedPosts: { disconnect: { id: postId } }
+            }
+        });
+        
+        const { likes } = await prisma.post.findUnique({
+            where: { id: postId },
+            select: { likes: true }
+        });
+
+        if (likes > 0) {
+            await prisma.post.update({
+                where: { id: postId },
+                data: { likes: { decrement: 1 } }
+            });
+        }
+
+        res.json({ message: 'Like removido.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'No se pudo quitar el like.' });
+    }
+});
+
 
 app.listen(3000, () => {
     console.log("Servidor corriendo en localhost puerto 3000")
