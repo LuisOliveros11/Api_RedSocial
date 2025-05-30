@@ -243,7 +243,8 @@ app.get("/feed/:id", authenticateToken, async (req, res) => {
             orderBy: { createdAt: "desc" },
             include: {
                 user: true,
-                savedByUsers: true
+                savedByUsers: true,
+                likedByUsers: true
             },
         });
 
