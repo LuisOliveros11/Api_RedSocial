@@ -244,7 +244,11 @@ app.get("/feed/:id", authenticateToken, async (req, res) => {
             include: {
                 user: true,
                 savedByUsers: true,
-                likedByUsers: true
+                comentarios: {
+                    include: {
+                        user: true 
+                    }
+                },
             },
         });
 
@@ -436,7 +440,7 @@ app.delete('/quitarLike/:id', authenticateToken, async (req, res) => {
                 likedPosts: { disconnect: { id: postId } }
             }
         });
-        
+
         const { likes } = await prisma.post.findUnique({
             where: { id: postId },
             select: { likes: true }
@@ -456,6 +460,88 @@ app.delete('/quitarLike/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// * * *  ENDPOINTS PARA COMENTARIOS * * * 
+
+//Comentar un Post
+app.post('/comentar/:id', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const postId = Number(req.params.id);
+    const { content } = req.body;
+
+    if (!content || content.trim().length === 0) {
+        return res.status(400).json({ error: 'El comentario no puede estar vacío.' });
+    }
+
+    try {
+        const postExiste = await prisma.post.findUnique({ where: { id: postId } });
+        if (!postExiste) {
+            return res.status(404).json({ error: 'Post no encontrado.' });
+        }
+
+        const nuevoComentario = await prisma.comment.create({
+            data: {
+                content,
+                user: { connect: { id: userId } },
+                post: { connect: { id: postId } }
+            },
+            include: {
+                user: { select: { id: true, name: true, photo: true } },
+            }
+        });
+
+        return res.status(201).json(nuevoComentario);
+    } catch (err) {
+        console.error('Error creando comentario:', err);
+        return res.status(500).json({ error: 'Error interno al crear comentario.' });
+    }
+});
+
+//Obtener comentarios de un Post
+app.get('/comentariosPost/:id', async (req, res) => {
+    const postId = Number(req.params.id);
+
+    try {
+        const postExiste = await prisma.post.findUnique({ where: { id: postId } });
+        if (!postExiste) {
+            return res.status(404).json({ error: 'Post no encontrado.' });
+        }
+
+        const comentarios = await prisma.comment.findMany({
+            where: { postId },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                user: { select: { id: true, name: true, photo: true } }
+            }
+        });
+
+        return res.json(comentarios);
+    } catch (err) {
+        console.error('Error al obtener comentarios:', err);
+        return res.status(500).json({ error: 'Error interno al obtener comentarios.' });
+    }
+});
+
+//Eliminar un comentario
+app.delete('/eliminarComentario/:id', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const commentId = Number(req.params.id);
+
+    try {
+        const comentario = await prisma.comment.findUnique({ where: { id: commentId } });
+        if (!comentario) {
+            return res.status(404).json({ error: 'Comentario no encontrado.' });
+        }
+        if (comentario.userId !== userId) {
+            return res.status(403).json({ error: 'No tienes permiso para eliminar este comentario.' });
+        }
+
+        await prisma.comment.delete({ where: { id: commentId } });
+        return res.json({ message: 'Comentario eliminado.' });
+    } catch (err) {
+        console.error('Error al eliminar comentario:', err);
+        return res.status(500).json({ error: 'Error interno al eliminar comentario.' });
+    }
+});
 
 app.listen(3000, () => {
     console.log("Servidor corriendo en localhost puerto 3000")
