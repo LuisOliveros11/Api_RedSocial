@@ -271,7 +271,8 @@ app.get('/postsGuardados/:id', authenticateToken, async (req, res) => {
                 savedPosts: {
                     orderBy: { createdAt: "desc" },
                     include: {
-                        user: true
+                        user: true,
+                        likedByUsers: true,
                     }
                 }
             }
