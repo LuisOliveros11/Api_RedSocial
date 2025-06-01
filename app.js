@@ -244,6 +244,7 @@ app.get("/feed/:id", authenticateToken, async (req, res) => {
             include: {
                 user: true,
                 savedByUsers: true,
+                likedByUsers: true,
                 comentarios: {
                     include: {
                         user: true 
@@ -341,7 +342,7 @@ app.post('/guardarPost', authenticateToken, async (req, res) => {
 app.delete('/eliminarPostGuardado/:id', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        const postId = Number(req.params.postId);
+        const postId = Number(req.params.id);
 
         // Usamos disconnect para quitar la relación muchos-a-muchos
         await prisma.user.update({
